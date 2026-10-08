@@ -181,6 +181,8 @@ def agg(rs):
     lasts = [r['last'] for r in rs if r['last'] != '-']
     return dict(n=len(rs), used=len(used), logins=sum(r['logins'] for r in rs),
                 days=sum(r['days'] for r in rs),
+                # school-day weekly rates, summed from the per-device figures
+                lpw=round(sum(r['lpw'] for r in rs), 1), dpw=round(sum(r['dpw'] for r in rs), 1),
                 last=max(lasts, key=dkey) if lasts else '-',
                 lv={k: sum(r['cat'] == k for r in rs) for k in LEVELS})
 
@@ -207,7 +209,7 @@ story = []
 # =============== Page 1: overview ===============
 story += [Footer('Term 3 and six-month reporting windows'),
           Paragraph('DATA OVERVIEW', KICK), Paragraph('Specialist device usage', H1),
-          Paragraph('DigiTech, DVC, Art and Media devices  |  Term 3 2026 and six-month reporting window', SUB),
+          Paragraph('Learner logons, concurrent use and application use  |  Term 3 2026 and six-month reporting window', SUB),
           Paragraph('<b>Term 3:</b> 20 July - 25 September 2026 (50 school days, 10 school weeks)', BODY),
           Paragraph('<b>Six months:</b> 25 March - 25 September 2026 (110 school days, 23 school weeks)', BODY),
           Spacer(1, 14)]
@@ -242,9 +244,9 @@ contents = [
     ['Usage by campus', '4-5'],
     ['Concurrent use and daily totals', '6'],
     ['Learner use by school week', '7'],
-    ['Application-use records', '8-9'],
-    ['Hardware and six-month use by device group', '10'],
-    ['Term 3 device register', '11-18'],
+    ['Application use', '8-11'],
+    ['Hardware and six-month use by device group', '12'],
+    ['Term 3 device register', '13-20'],
 ]
 story.append(table(['Section', 'Page'], contents, cols(8, 1), num_cols=(1,), pad=4))
 story.append(PageBreak())
@@ -256,10 +258,10 @@ story += heading('Term 3 2026', 'Learner use by device group',
 
 story.append(Paragraph('Level-of-use definitions', H2))
 story.append(table(['Level of use', 'Definition'], [
-    ['Regular', 'Used by learners in at least half of the school weeks in the period (5 or more of the 10 Term 3 weeks)'],
-    ['Occasional', 'Used by learners on more than one day, in fewer than half of the school weeks'],
-    ['One day', 'Used by learners on a single day'],
-    ['Not used', 'No learner logins in the period'],
+    ['Regular', 'Learner use on school days in at least 50% of the school weeks in the period'],
+    ['Occasional', 'Learner use on two or more days, below that share'],
+    ['One day', 'Learner use on a single day'],
+    ['Not used', 'No learner logon recorded'],
 ], cols(1.3, 5), bold_first=True, pad=4))
 
 story.append(Paragraph('Summary by device group', H2))
@@ -273,10 +275,10 @@ for g in GROUPS:
     else:
         ln = ''
     body.append([g, a['n'], a['used'], pct(a['used'], a['n']), ln, a['logins'],
-                 f"{a['logins'] / WEEKS_T3:.1f}", a['days'], a['last']])
-body.append(['All devices', 211, 139, pct(139, 211), 366, 2581, f'{2581 / WEEKS_T3:.1f}',
+                 f"{a['lpw']:.1f}", a['days'], a['last']])
+body.append(['All devices', 211, 139, pct(139, 211), 366, 2581, f"{total_t3['lpw']:.1f}",
              total_t3['days'], '25/09/26'])
-t = table(['Device group', 'Devices', 'Used', '% used', 'Learner accounts', 'Learner logins', 'Logins per week',
+t = table(['Device group', 'Devices', 'Used', '% used', 'Learner accounts', 'Learner logins', 'Logins per school week',
            'Device-<br/>days', 'Last learner login'], body,
           cols(3.0, 1.25, 0.9, 1.0, 1.35, 1.2, 1.15, 1.1, 1.35), num_cols=(1, 2, 3, 4, 5, 6, 7, 8), total=True,
           font=8.5)
@@ -320,8 +322,8 @@ for g in GROUPS + ['All devices']:
     rs = rows if g == 'All devices' else [r for r in rows if r['g'] == g]
     a = agg(rs)
     u = [r for r in rs if r['logins'] > 0]
-    body.append([g, f"{a['logins'] / a['n'] / WEEKS_T3:.2f}", f"{a['days'] / a['n'] / WEEKS_T3:.2f}",
-                 f"{a['logins'] / len(u) / WEEKS_T3:.2f}", f"{a['days'] / len(u) / WEEKS_T3:.2f}"])
+    body.append([g, f"{a['lpw'] / a['n']:.2f}", f"{a['dpw'] / a['n']:.2f}",
+                 f"{a['lpw'] / len(u):.2f}", f"{a['dpw'] / len(u):.2f}"])
 story.append(table(['Device group', 'Logins / week<br/>(all devices)', 'Days / week<br/>(all devices)',
                     'Logins / week<br/>(used devices)', 'Days / week<br/>(used devices)'], body,
                    cols(3.3, 1.6, 1.6, 1.6, 1.6), num_cols=(1, 2, 3, 4), total=True, font=8.5))
@@ -351,7 +353,7 @@ body = [
     camp_row('Share of devices used', lambda c: pct(ca[c]['used'], ca[c]['n'])),
     camp_row('Learner logins', lambda c: ca[c]['logins']),
     camp_row('Learner logins per device', lambda c: f"{ca[c]['logins'] / ca[c]['n']:.1f}"),
-    camp_row('Learner logins per device per week', lambda c: f"{ca[c]['logins'] / ca[c]['n'] / WEEKS_T3:.2f}"),
+    camp_row('Learner logins per device per week', lambda c: f"{ca[c]['lpw'] / ca[c]['n']:.2f}"),
     camp_row('Learner logins per used device', lambda c: f"{ca[c]['logins'] / ca[c]['used']:.1f}"),
     camp_row('Device-days (separate days used, all devices)', lambda c: ca[c]['days']),
     camp_row('Average days used per device', lambda c: f"{ca[c]['days'] / ca[c]['n']:.1f}"),
@@ -430,11 +432,11 @@ for c in CAMPUSES:
             continue
         a = agg(rs)
         body.append([c if first else '', g, a['n'], a['used'], pct(a['used'], a['n']), a['logins'],
-                     f"{a['logins'] / a['n'] / WEEKS_T3:.2f}", a['days'], a['lv']['Regular'], a['last']])
+                     f"{a['lpw'] / a['n']:.2f}", a['days'], a['lv']['Regular'], a['last']])
         first = False
     a = ca[c]
     body.append(['', f'{c} total', a['n'], a['used'], pct(a['used'], a['n']), a['logins'],
-                 f"{a['logins'] / a['n'] / WEEKS_T3:.2f}", a['days'], a['lv']['Regular'], a['last']])
+                 f"{a['lpw'] / a['n']:.2f}", a['days'], a['lv']['Regular'], a['last']])
     group_rows.append(len(body))
 bc = [(e - 1, ci) for e in group_rows for ci in range(1, 10)]
 starts = [1] + [e + 1 for e in group_rows[:-1]]
@@ -476,7 +478,7 @@ t = table(['Device group', 'Jnr devices', 'Jnr regular', 'Jnr occ. / one day', '
 t.setStyle(TableStyle([('LINEAFTER', (4, 0), (4, -1), 1, colors.white), ('LINEAFTER', (4, 1), (4, -1), 1, RULE)]))
 story.append(t)
 story.append(Paragraph('Percentages are shares of the devices in that group and campus. '
-                       'Application-use records are reported for the whole fleet (pages 8-9).', NOTE))
+                       'Application-use records are reported for the whole fleet (pages 8-11).', NOTE))
 story.append(PageBreak())
 
 # =============== Page 6: concurrent ===============
@@ -532,77 +534,187 @@ story.append(table(['Period', 'School days', 'Weekends / holidays', 'All days'],
                    num_cols=(1, 2, 3)))
 story.append(PageBreak())
 
-# =============== Page 8: Windows apps ===============
-story += [Footer('Windows application-use records  |  T3: 20 Jul - 25 Sep 2026  |  6m: 25 Mar - 25 Sep 2026')]
-story += heading('Application use', 'Windows application-use records',
-                 'Devices with learner use, and learner accounts with dated application records')
-apps_spec = [('Autodesk Fusion', 30, 27, 66, 61), ('Blender', 22, 61, 30, 69), ('Python', 21, 14, 23, 19),
-             ('PyScripter', 20, 23, 23, 28), ('PrusaSlicer', 13, 19, 22, 28), ('RDWorks', 9, 5, 28, 31),
-             ('Minecraft Education', 29, 22, 31, 26), ('Roblox Studio', 9, 4, 10, 5), ('Inkscape', 2, 3, 5, 5),
-             ('Audacity', 2, 2, 8, 6), ('Scribus', 1, 1, 4, 2), ('GIMP', 0, 0, 3, 1)]
-apps_gen = [('Chrome', 69, 142, 91, 214), ('Microsoft Edge', 65, 90, 90, 141), ('Firefox', 12, 10, 21, 15),
-            ('Microsoft 365 Apps', 2, 2, 4, 3)]
-hdr = ['Application', 'T3 devices', 'T3 learner accounts', '6m devices', '6m learner accounts']
-w = cols(3, 1.3, 1.3, 1.3, 1.3)
-story.append(Paragraph('Specialist applications', H2))
-story.append(table(hdr, [list(a) for a in apps_spec], w, num_cols=(1, 2, 3, 4), pad=4))
-story.append(Paragraph('Browsers and Office', H2))
-story.append(table(hdr, [list(a) for a in apps_gen], w, num_cols=(1, 2, 3, 4), pad=4))
-story.append(Paragraph('Other Windows learner-account records (six-month window)', H2))
-story.append(table(['Program', 'Learners', 'Devices', 'Cumulative launches'],
-                   [['AfterFX.exe (Adobe After Effects)', 1, 2, 7], ['Photoshop.exe (Adobe Photoshop)', 4, 4, 8],
-                    ['makerbot-print.exe (MakerBot Print)', 9, 7, 26]],
-                   cols(3, 1.3, 1.3, 2.6), num_cols=(1, 2, 3), pad=4))
-story.append(Paragraph('Windows UserAssist records last active within the six-month window.', NOTE))
+# =============== Pages 8-10: applications ===============
+CAT_ROWS = [  # category, uses T3, learners T3, Win h T3, uses 6m, learners 6m, Win h 6m, Mac h T3, Mac h 6m
+    ('Higher-spec', 71, 98, '134.2', 124, 143, '705.2', '0.0', '0.0'),
+    ('Mid-spec creative', 48, 47, '35.3', 74, 68, '39.5', '0.0', '0.0'),
+    ('Browser/Office', 270, 247, '175.9', 355, 389, '337.8', '714.8', '722.3'),
+    ('Light utility', 65, 45, '34.7', 118, 100, '57.6', '0.0', '0.0'),
+    ('Total', 454, 437, '380.1', 671, 700, '1,140.1', '714.8', '722.3'),
+]
+TRACKED = {  # app: installed, dev T3, learners T3, Win h T3, dev 6m, learners 6m, Win h 6m, last used
+    'Higher-spec': [
+        ('Autodesk Fusion', 76, 30, 27, '45.3', 69, 61, '573.6', '24/09/26'),
+        ('Blender', 53, 22, 61, '68.1', 30, 69, '72.3', '16/09/26'),
+        ('Roblox', 18, 10, 6, '15.8', 14, 8, '52.2', '24/09/26'),
+        ('Roblox Studio', 14, 9, 4, '5.0', 11, 5, '7.1', '21/09/26')],
+    'Mid-spec creative': [
+        ('Audacity', 112, 2, 2, '0.1', 9, 6, '0.7', '18/08/26'),
+        ('GIMP', 51, 0, 0, '0.0', 3, 1, '0.0', '26/06/26'),
+        ('Inkscape', 52, 2, 3, '0.0', 5, 5, '0.2', '17/08/26'),
+        ('Minecraft Education', 52, 29, 22, '26.4', 31, 26, '26.7', '09/10/26'),
+        ('PrusaSlicer', 60, 14, 19, '8.8', 22, 28, '11.9', '08/09/26'),
+        ('Scribus', 52, 1, 1, '0.0', 4, 2, '0.0', '03/08/26')],
+    'Browser/Office': [
+        ('Adobe Reader DC', 112, 4, 3, '0.0', 29, 16, '0.7', '15/09/26'),
+        ('Chrome', 112, 125, 142, '91.4', 145, 214, '186.0', '29/09/26'),
+        ('Firefox', 112, 12, 10, '1.8', 23, 15, '2.8', '25/09/26'),
+        ('Microsoft 365 Apps', 53, 4, 2, '0.0', 7, 3, '0.0', '18/09/26'),
+        ('Microsoft Edge', 112, 67, 90, '82.6', 92, 141, '148.3', '09/10/26'),
+        ('Safari', 0, 58, 0, '0.0', 59, 0, '0.0', '25/09/26')],
+    'Light utility': [
+        ('7-Zip', 112, 0, 0, '0.0', 1, 0, '0.0', '15/04/26'),
+        ('Notepad++', 112, 10, 2, '1.1', 15, 13, '6.7', '04/09/26'),
+        ('PyScripter', 91, 21, 23, '29.7', 24, 28, '31.7', '25/09/26'),
+        ('Python', 49, 22, 14, '0.1', 24, 19, '0.1', '25/09/26'),
+        ('RDWorks', 59, 9, 5, '3.8', 32, 31, '11.9', '24/09/26'),
+        ('Solitaire', 0, 0, 0, '0.0', 13, 4, '7.3', '26/06/26'),
+        ('VLC', 112, 3, 1, '0.0', 9, 5, '0.0', '25/09/26')],
+}
+# reconcile against the source totals
+_all = [a for v in TRACKED.values() for a in v]
+assert sum(a[2] for a in _all) == 454 and sum(a[3] for a in _all) == 437 and sum(a[5] for a in _all) == 671
+assert sum(a[6] for a in _all) == 700
+assert abs(sum(float(a[4]) for a in _all) - 380.1) < 0.15 and abs(sum(float(a[7]) for a in _all) - 1140.1) < 0.15
+for cat, n, l, h, n6, l6, h6, _, _ in CAT_ROWS[:-1]:
+    v = TRACKED[cat]
+    assert sum(a[2] for a in v) == n and sum(a[3] for a in v) == l and sum(a[5] for a in v) == n6, cat
+    assert abs(sum(float(a[4]) for a in v) - float(h)) < 0.15 and abs(sum(float(a[7]) for a in v) - float(h6)) < 0.15, cat
+
+story += [Footer('Tracked applications  |  T3: 20 Jul - 25 Sep 2026  |  6m: 25 Mar - 25 Sep 2026')]
+story += heading('Application use', 'Tracked applications',
+                 'Devices used: Windows and Mac devices with a dated record. Learners: learner accounts with a dated record. '
+                 'Win focus hours: Windows UserAssist foreground time for learner entries last used in the period, '
+                 'cumulative since each profile was created.')
+body, cat_rows = [], []
+for cat, apps in TRACKED.items():
+    body.append([cat] + [''] * 8)
+    cat_rows.append(len(body))
+    body += [list(a) for a in apps]
+body.append(['Total', '', 454, 437, '380.1', 671, 700, '1,140.1', ''])
+t = table(['Application', 'Installed on', 'Devices used T3', 'Learners T3', 'Win focus hours T3', 'Devices used 6m',
+           'Learners 6m', 'Win focus hours 6m', 'Last used'], body,
+          cols(2.5, 1, 1, 1, 1.1, 1, 1, 1.1, 1.15), num_cols=range(1, 9), total=True, font=8.3, pad=2.6, hpad=4.5,
+          bold_rows=[r - 1 for r in cat_rows])
+st = [('BACKGROUND', (0, 1), (-1, len(body) - 1), colors.white)]
+for r in cat_rows:
+    st += [('SPAN', (0, r), (-1, r)), ('BACKGROUND', (0, r), (-1, r), TILE), ('TEXTCOLOR', (0, r), (-1, r), TEAL)]
+t.setStyle(TableStyle(st))
+story.append(t)
 story.append(PageBreak())
 
-# =============== Page 9: Mac apps ===============
+story += [Footer('Windows application records  |  T3: 20 Jul - 25 Sep 2026  |  6m: 25 Mar - 25 Sep 2026')]
+story += heading('Application use', 'Application categories and other programs',
+                 'Category totals for the tracked applications, and other programs started by learner accounts')
+story.append(Paragraph('Application use by category', H2))
+story.append(table(['Category', 'Device uses T3', 'Learners T3', 'Win focus hours T3', 'Device uses 6m',
+                    'Learners 6m', 'Win focus hours 6m', 'Mac hours T3', 'Mac hours 6m'],
+                   [list(r) for r in CAT_ROWS], cols(2.3, 1, 1, 1.1, 1, 1, 1.1, 1, 1), num_cols=range(1, 9),
+                   total=True, font=8.5, pad=4, hpad=4.5))
+story.append(Paragraph('Higher-spec: Autodesk Fusion, Blender, Roblox, Roblox Studio. Mid-spec creative: Audacity, GIMP, '
+                       'Inkscape, Minecraft Education, PrusaSlicer, Scribus. Browser/Office: Adobe Reader DC, Chrome, '
+                       'Firefox, Microsoft 365 Apps, Microsoft Edge, Safari. Light utility: 7-Zip, Notepad++, PyScripter, '
+                       'Python, RDWorks, Solitaire, VLC. Mac hours: Jamf foreground time within the period, all accounts.',
+                       NOTE))
+LAUNCH = [('Autodesk Fusion', 183, 556, 30, 66), ('Blender', 130, 189, 22, 30), ('Roblox', 0, 0, 7, 9),
+          ('Roblox Studio', 0, 0, 9, 10), ('Audacity', 2, 11, 2, 8), ('GIMP', 0, 5, 0, 3), ('Inkscape', 3, 12, 2, 5),
+          ('Minecraft Education', 177, 204, 29, 31), ('PrusaSlicer', 0, 0, 13, 22), ('Scribus', 1, 3, 1, 4),
+          ('Adobe Reader DC', 12, 168, 3, 26), ('Chrome', 2806, 4291, 69, 91), ('Firefox', 81, 141, 12, 21),
+          ('Microsoft 365 Apps', 1, 4, 2, 4), ('Microsoft Edge', 2607, 4811, 65, 90), ('Safari', 0, 0, 0, 0),
+          ('7-Zip', 0, 0, 0, 0), ('Notepad++', 20, 90, 10, 14),
+          ('PyScripter', 97, 114, 20, 23), ('Python', 132, 171, 21, 23), ('RDWorks', 0, 0, 9, 28),
+          ('Solitaire', 0, 0, 0, 13), ('VLC', 3, 7, 2, 7)]
+story.append(Paragraph('Other programs started by learner accounts (six months, top 15 by focus time)', H2))
+OTHER_WIN = [
+    ('Chrome app, Profile1 (kinpkgiljofpcfc)', 1, 1, 1, '1.7'), ('Microsoft Store', 72, 48, 143, '1.6'),
+    ('Snipping Tool (ScreenSketch)', 58, 41, 384, '0.9'), ('Windows Camera', 22, 24, 50, '0.9'),
+    ('AfterFX.exe (Adobe After Effects)', 1, 2, 7, '0.8'), ('Brave browser', 1, 1, 1, '0.7'),
+    ('MSEdge', 1, 1, 1, '0.4'), ('prusa-gcodeviewer.exe', 14, 15, 22, '0.4'),
+    ('makerbot-print.exe (MakerBot Print)', 9, 7, 26, '0.2'), ('cmd.exe', 5, 6, 10, '0.2'),
+    ('Opera browser', 1, 1, 4, '0.2'), ('Chrome app, Profile1 (ikplgjnhlkgencm)', 1, 1, 2, '0.2'),
+    ('Photoshop.exe (Adobe Photoshop)', 4, 4, 8, '0.2'), ('X-VPN Free Unlimited VPN', 2, 4, 26, '0.1'),
+    ('Microsoft.AutoGenerated.{BB8885E2-...}', 5, 4, 9, '0.1')]
+assert sum(a[3] for a in OTHER_WIN) == 694 and abs(sum(float(a[4]) for a in OTHER_WIN) - 8.8) < 0.4  # source total is unrounded
+story.append(table(['Program', 'Learner accounts', 'Devices', 'Launches', 'Focus hours'],
+                   [list(a) for a in OTHER_WIN] + [['Total (programs listed)', '', '', 694, '8.8']],
+                   cols(3.4, 1.2, 1, 1, 1.1), num_cols=(1, 2, 3, 4), total=True, font=8.3, pad=2.6))
+story.append(Paragraph('Launches and focus hours are cumulative UserAssist counters.', NOTE))
+story.append(PageBreak())
+story += [Footer('Windows application records  |  T3: 20 Jul - 25 Sep 2026  |  6m: 25 Mar - 25 Sep 2026')]
+story += heading('Application use', 'Windows launch records',
+                 'Prefetch runs that fall inside a learner session, and devices with learner evidence for each application')
+story.append(table(['Application', 'Prefetch runs in learner sessions T3', 'Prefetch runs 6m',
+                    'Devices with learner evidence T3', 'Devices with learner evidence 6m'],
+                   [list(a) for a in LAUNCH], cols(2.6, 1.5, 1.2, 1.5, 1.5), num_cols=(1, 2, 3, 4), font=8.3,
+                   pad=2.6))
+story.append(PageBreak())
+
 story += [Footer('Mac application foreground time recorded by Jamf (all signed-in accounts)')]
-story += heading('Application use', 'Adobe, media and Mac applications',
-                 'Mac foreground time includes all signed-in accounts, as recorded by Jamf')
-story.append(Paragraph('Creative and media applications (six-month window)', H2))
-story.append(table(['Mac application', 'Devices', 'Foreground hours'], [
-    ['Adobe Photoshop 2026', 42, '124.7'], ['Adobe Photoshop 2025', 12, '45.9'], ['Adobe Photoshop 2024', 3, '7.8'],
-    ['Adobe Premiere Pro 2025', 3, '17.4'], ['Adobe Illustrator', 15, '11.0'], ['Adobe Bridge 2026', 29, '4.5'],
-    ['DaVinci Resolve', 2, '11.7'], ['iMovie', 2, '3.6'], ['Wacom Center', 48, '7.5'],
+story += heading('Application use', 'Mac applications',
+                 'Foreground time within each period, from Jamf application usage (per Mac, all signed-in accounts)')
+story.append(Paragraph('Tracked applications on Macs', H2))
+story.append(table(['Application', 'Macs used T3', 'Foreground hours T3', 'Macs used 6m', 'Foreground hours 6m'], [
+    ['Adobe Reader DC', 1, '0.4', 1, '0.4'], ['Chrome', 54, '404.8', 54, '411.6'],
+    ['Microsoft 365 Apps', 2, '2.0', 2, '2.0'], ['Safari', 58, '307.6', 59, '308.3'],
+    ['Total', 115, '714.8', 116, '722.3'],
+], cols(3, 1.3, 1.3, 1.3, 1.3), num_cols=(1, 2, 3, 4), total=True, pad=4))
+story.append(Paragraph('Other applications used on Macs (six months)', H2))
+story.append(table(['Application', 'Macs', 'Foreground hours'], [
+    ['Music', 18, '213.0'], ['Adobe Photoshop 2026', 42, '124.7'], ['Adobe Photoshop 2025', 12, '45.9'],
+    ['Preview', 49, '37.6'], ['Adobe Premiere Pro 2025', 3, '17.4'], ['DaVinci Resolve', 2, '11.7'],
+    ['Adobe Illustrator', 15, '11.0'], ['Print Center', 29, '10.3'], ['Adobe Photoshop 2024', 3, '7.8'],
+    ['Wacom Center', 48, '7.5'], ['Adobe Bridge 2026', 29, '4.5'], ['iMovie', 2, '3.6'],
 ], cols(4, 1.5, 1.8), num_cols=(1, 2), pad=4))
-story.append(Paragraph('Browsers and Office', H2))
-story.append(table(['Application', 'T3 devices', 'T3 hours', '6m devices', '6m hours'], [
-    ['Chrome', 54, '404.8', 54, '411.6'], ['Safari', 58, '307.6', 59, '308.3'],
-    ['Microsoft 365 Apps', 2, '2.0', 2, '2.0'], ['Adobe Reader DC', 1, '0.4', 1, '0.4'],
-], cols(3, 1.3, 1.3, 1.3, 1.3), num_cols=(1, 2, 3, 4), pad=4))
 story.append(PageBreak())
 
-# =============== Page 10: hardware + six months ===============
+# =============== Hardware + six months ===============
 story += [Footer('Hardware inventory and six-month learner use')]
 story += heading('Fleet data', 'Hardware and six-month use', 'Hardware data collected from 185 of 211 devices')
 story.append(Paragraph('Hardware', H2))
 story.append(table(['Model', 'Count', 'CPU', 'RAM', 'Graphics'], [
-    ['HP ProBook 4 G1i 14-inch', 86, 'Core Ultra 5 225U', '15 GB', 'Intel Graphics'],
-    ['HP ProBook 450 G10 15.6-inch', 15, 'Core i7-1355U', '16 GB', 'Intel UHD Graphics'],
-    ['H610M S2H V2 DDR4 desktop', 11, 'Core i7-14700F', '32 GB', 'NVIDIA RTX 4060'],
+    ['HP ProBook 4 G1i 14-inch', 86, 'Intel Core Ultra 5 225U', '15 GB', 'Intel Graphics'],
+    ['HP ProBook 450 G10 15.6-inch', 15, 'Intel Core i7-1355U', '16 GB', 'Intel UHD Graphics'],
+    ['H610M S2H V2 DDR4 desktop', 11, 'Intel Core i7-14700F', '32 GB', 'NVIDIA GeForce RTX 4060'],
     ['MacBook Pro 14-inch (Nov 2023)', 30, 'Apple M3 Pro', '18 GB', '-'],
     ['MacBook Pro 14-inch (2024)', 29, 'Apple M4', '16 GB', '-'],
     ['MacBook Pro 14-inch (M5)', 1, 'Apple M5', '16 GB', '-'],
     ['iMac 24-inch (2023)', 12, 'Apple M3', '8 GB', '-'],
-    ['iMac 21.5-inch Retina 4K (2015)', 1, 'Quad-core Intel i5', '8 GB', '-'],
-], cols(3.2, 0.9, 1.9, 0.9, 1.9), num_cols=(1,), pad=4, font=8.5))
+    ['iMac 21.5-inch Retina 4K (Late 2015)', 1, 'Quad-core Intel Core i5', '8 GB', '-'],
+    ['Total', 185, '', '', ''],
+], cols(2.9, 0.7, 1.9, 0.7, 2.3), num_cols=(1,), pad=3.5, font=8.5, total=True))
+story.append(Spacer(1, 6))
+story.append(table(['Installed RAM', '8 GB', '12-16 GB', '24 GB or more', 'Discrete graphics'],
+                   [['Share of 185 devices', '7.0%', '87.0%', '5.9%', '11 devices']],
+                   cols(2.4, 1, 1, 1.2, 1.4), num_cols=(1, 2, 3, 4), pad=3.5, font=8.5))
 
 story.append(Paragraph('Six-month learner use by device group', H2))
+s6rows = json.load(open(sys.argv[3]))['s6']
+S6LV = {'Regularly': 'Regular', 'Occasionally': 'Occasional', 'Once': 'One day', 'Not used': 'Not used'}
 body = []
-for g in GROUPS[:3]:
-    du, ln, lg = SIX[g]
-    body.append([g, du, f'{ln}*', lg, f'{lg / 23:.1f}'])
-body.append(['MacBooks and iMacs', SIX_MAC[0], SIX_MAC[1], SIX_MAC[2], f'{SIX_MAC[2] / 23:.1f}'])
-body.append(['All devices', 158, 469, 4847, f'{4847 / 23:.1f}'])
-assert sum(b[1] for b in body[:-1]) == 158 and sum(b[3] for b in body[:-1]) == 4847
-story.append(table(['Device group', 'Devices used', 'Learner accounts', 'Learner logins', 'Logins per week'],
-                   body, cols(3.3, 1.3, 1.4, 1.3, 1.3), num_cols=(1, 2, 3, 4), total=True, font=8.5, pad=4))
+tot = dict(used=0, logins=0, lv={k: 0 for k in LEVELS})
+for g in GROUPS:
+    ss = [s for r, s in zip(rows, s6rows) if r['g'] == g]
+    assert all(s[0] == r['device'] for r, s in zip(rows, s6rows))
+    used = sum(int(s[6]) > 0 for s in ss)
+    lg = sum(int(s[6]) for s in ss)
+    lv = {k: sum(S6LV[s[11]] == k for s in ss) for k in LEVELS}
+    ln = f'{SIX[g][1]}*' if g in SIX else ('179 (Macs)' if g == 'MacBooks' else '')
+    if g in SIX:
+        assert (used, lg) == (SIX[g][0], SIX[g][2]), g
+    body.append([g, len(ss), used, ln, lg] + [lv[k] for k in LEVELS])
+    tot['used'] += used
+    tot['logins'] += lg
+    for k in LEVELS:
+        tot['lv'][k] += lv[k]
+assert tot['used'] == 158 and tot['logins'] == 4847 and [tot['lv'][k] for k in LEVELS] == [78, 77, 3, 53]
+body.append(['All devices', 211, 158, 469, 4847] + [tot['lv'][k] for k in LEVELS])
+t = table(['Device group', 'Devices', 'Used', 'Learner accounts', 'Learner logins'] + LEVELS, body,
+          cols(2.55, 0.9, 0.8, 1.3, 1.05, 1.0, 1.3, 0.95, 0.95), num_cols=range(1, 9), total=True, font=8.5, pad=4,
+          hpad=4.5)
+t.setStyle(TableStyle([('SPAN', (3, 4), (3, 5)), ('VALIGN', (3, 4), (3, 5), 'MIDDLE')]))
+story.append(t)
 story.append(Paragraph('* Sum of the learner counts for each OU in the group; a learner who used devices in more than '
-                       'one of these OUs is counted once per OU. Logins per week use 23 school weeks.', NOTE))
-story.append(Paragraph('Six-month level of use (all devices)', H2))
-story.append(table(['Regular', 'Occasional', 'One day', 'Not used', 'Total'], [[78, 77, 3, 53, 211]],
-                   cols(1, 1, 1, 1, 1), num_cols=range(5), pad=4))
+                       'one of these OUs is counted once per OU. Mac login records begin 15 July 2026.', NOTE))
 story.append(NextPageTemplate('land'))
 story.append(PageBreak())
 
